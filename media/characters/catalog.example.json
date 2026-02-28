@@ -1,0 +1,26 @@
+{
+  "characters": [
+    {
+      "name": "Jason Statham",
+      "description": "Брутальное короткое поздравление",
+      "preview_image_path": "media/characters/statham/preview.jpg",
+      "elevenlabs_voice_id": "your-elevenlabs-voice-id",
+      "sort_order": 10,
+      "is_active": true,
+      "creatives": [
+        {
+          "label": "Классический образ",
+          "image_path": "media/characters/statham/creative_01.jpg",
+          "sort_order": 10,
+          "is_active": true
+        },
+        {
+          "label": "Пиджак",
+          "image_path": "media/characters/statham/creative_02.jpg",
+          "sort_order": 20,
+          "is_active": true
+        }
+      ]
+    }
+  ]
+}

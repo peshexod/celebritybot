@@ -1,0 +1,1 @@
+"""Celebrity speaking bot package."""

@@ -1,0 +1,1 @@
+"""VK handlers package."""

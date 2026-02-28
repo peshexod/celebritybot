@@ -1,0 +1,35 @@
+name: CI-CD
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Lint
+        run: ruff check .
+      - name: Run tests
+        run: pytest -q
+      - name: Validate migrations
+        run: alembic upgrade head --sql > /tmp/migration.sql
+      - name: Build docker image
+        run: docker build -t celebrity-speaking-bot:ci .
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: lint-test-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy placeholder
+        run: echo "Configure SSH deploy with docker compose prod on your server"
