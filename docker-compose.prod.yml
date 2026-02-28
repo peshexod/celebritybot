@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:17
     restart: always
     environment:
       POSTGRES_DB: celebrity_bot
@@ -15,23 +15,18 @@ services:
       retries: 20
 
   bot:
-    build: .
+    image: ${BOT_IMAGE:-ghcr.io/peshexod/celebritybot:latest}
     restart: always
     env_file:
       - .env
+    environment:
+      WEBHOOK_HOST: ${WEBHOOK_HOST:-https://example.com}
+    ports:
+      - "127.0.0.1:8080:8080"
     depends_on:
       db:
         condition: service_healthy
     command: sh -c "alembic upgrade head && python -m bot.main"
-
-  nginx:
-    image: nginx:stable
-    restart: always
-    ports:
-      - "80:80"
-      - "443:443"
-    depends_on:
-      - bot
 
 volumes:
   pg_data_prod:

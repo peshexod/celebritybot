@@ -5,8 +5,12 @@ on:
     branches: ["main"]
   pull_request:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  lint-test-build:
+  lint-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,13 +27,62 @@ jobs:
         run: pytest -q
       - name: Validate migrations
         run: alembic upgrade head --sql > /tmp/migration.sql
-      - name: Build docker image
-        run: docker build -t celebrity-speaking-bot:ci .
 
-  deploy:
-    if: github.ref == 'refs/heads/main'
-    needs: lint-test-build
+  build-and-push:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: lint-test
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy placeholder
-        run: echo "Configure SSH deploy with docker compose prod on your server"
+      - uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix=sha-
+      - name: Build and push docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      SERVER_NAME: ${{ secrets.SERVER_NAME }}
+      GHCR_USER: ${{ github.actor }}
+      GHCR_TOKEN: ${{ github.token }}
+      BOT_IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
+          script_stop: true
+          envs: DEPLOY_PATH,SERVER_NAME,GHCR_USER,GHCR_TOKEN,BOT_IMAGE
+          script: |
+            set -e
+            cd "$DEPLOY_PATH"
+            echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+            WEBHOOK_HOST="https://$SERVER_NAME" BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml pull bot
+            WEBHOOK_HOST="https://$SERVER_NAME" BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f

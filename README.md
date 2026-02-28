@@ -44,6 +44,23 @@
 - Локально: `pytest -q`
 - В контейнере (по необходимости): `docker compose run --rm bot pytest -q`
 
+## CI/CD деплой (GitHub Actions)
+
+Workflow в `.github/workflows/ci-cd.yml`:
+
+- прогоняет lint + tests,
+- собирает и пушит образ в GHCR: `ghcr.io/<owner>/<repo>` (через стандартный `GITHUB_TOKEN`),
+- деплоит на сервер по SSH и запускает `docker compose -f docker-compose.prod.yml up -d`.
+
+Для деплоя добавьте Secrets в GitHub репозитории:
+
+- `SERVER_HOST` — IP/домен сервера
+- `SERVER_USER` — SSH-пользователь
+- `SERVER_SSH_KEY` — приватный SSH-ключ
+- `SERVER_PORT` — SSH-порт (опционально, по умолчанию `22`)
+- `DEPLOY_PATH` — путь на сервере, где лежит проект и `docker-compose.prod.yml`
+- `SERVER_NAME` — доменное имя сервера (используется для `WEBHOOK_HOST=https://<SERVER_NAME>`)
+
 ## Режимы
 
 - `BOT_MODE=polling` — локальная разработка, оплата подтверждается фоновой проверкой API ЮKassa
