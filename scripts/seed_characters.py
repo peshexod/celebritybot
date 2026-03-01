@@ -30,7 +30,14 @@ async def seed_from_catalog(catalog_path: Path) -> None:
             name = item["name"].strip()
             existing = await session.scalar(select(Character).where(Character.name == name))
 
-            preview_path = _resolve_path(item["preview_image_path"], project_root)
+            creatives_payload = item.get("creatives", [])
+            preview_source = item.get("preview_image_path")
+            if not preview_source and creatives_payload:
+                preview_source = creatives_payload[0].get("image_path")
+            if not preview_source:
+                raise ValueError(f"Character '{name}' must have preview_image_path or at least one creative")
+
+            preview_path = _resolve_path(preview_source, project_root)
             if not Path(preview_path).exists():
                 raise FileNotFoundError(f"Preview image not found: {preview_path}")
 
@@ -58,7 +65,7 @@ async def seed_from_catalog(catalog_path: Path) -> None:
             )
             existing_by_label = {creative.label or "": creative for creative in existing_creatives}
 
-            for creative_item in item.get("creatives", []):
+            for creative_item in creatives_payload:
                 label = (creative_item.get("label") or "").strip()
                 image_path = _resolve_path(creative_item["image_path"], project_root)
                 if not Path(image_path).exists():

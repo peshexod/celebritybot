@@ -64,12 +64,50 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-      SERVER_NAME: ${{ secrets.SERVER_NAME }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH || '/opt/celebritybot' }}
+      PROD_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
       GHCR_USER: ${{ github.actor }}
       GHCR_TOKEN: ${{ github.token }}
       BOT_IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
     steps:
+      - name: Ensure deploy directory exists
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
+          script_stop: true
+          envs: DEPLOY_PATH
+          script: |
+            set -e
+            mkdir -p "$DEPLOY_PATH"
+            mkdir -p "$DEPLOY_PATH/media"
+
+      - name: Write .env from secret
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
+          script_stop: true
+          envs: DEPLOY_PATH,PROD_ENV_FILE
+          script: |
+            set -e
+            printf '%s' "$PROD_ENV_FILE" > "$DEPLOY_PATH/.env"
+            chmod 600 "$DEPLOY_PATH/.env"
+
+      - name: Upload docker-compose.prod.yml
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || '22' }}
+          source: docker-compose.prod.yml
+          target: ${{ env.DEPLOY_PATH }}
+
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -78,11 +116,11 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || '22' }}
           script_stop: true
-          envs: DEPLOY_PATH,SERVER_NAME,GHCR_USER,GHCR_TOKEN,BOT_IMAGE
+          envs: DEPLOY_PATH,GHCR_USER,GHCR_TOKEN,BOT_IMAGE
           script: |
             set -e
             cd "$DEPLOY_PATH"
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            WEBHOOK_HOST="https://$SERVER_NAME" BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml pull bot
-            WEBHOOK_HOST="https://$SERVER_NAME" BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml up -d
+            BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml pull bot
+            BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml up -d
             docker image prune -f

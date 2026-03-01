@@ -58,8 +58,16 @@ Workflow в `.github/workflows/ci-cd.yml`:
 - `SERVER_USER` — SSH-пользователь
 - `SERVER_SSH_KEY` — приватный SSH-ключ
 - `SERVER_PORT` — SSH-порт (опционально, по умолчанию `22`)
-- `DEPLOY_PATH` — путь на сервере, где лежит проект и `docker-compose.prod.yml`
-- `SERVER_NAME` — доменное имя сервера (используется для `WEBHOOK_HOST=https://<SERVER_NAME>`)
+- `DEPLOY_PATH` — путь на сервере, где лежит проект и `docker-compose.prod.yml` (опционально, по умолчанию `/opt/celebritybot`)
+- `PROD_ENV_FILE` — полный текст продового `.env`
+
+Во время деплоя workflow создаёт/обновляет `DEPLOY_PATH/.env` из `PROD_ENV_FILE` и кладёт его рядом с `docker-compose.prod.yml`.
+
+`pg_data_prod` — это persistent volume Postgres. Если там уже есть база, данные сохраняются при деплоях и перезапусках.
+Новая инициализация `POSTGRES_*` применяется только к пустому volume.
+
+Файлы креативов должны лежать на сервере в `${DEPLOY_PATH}/media` (или пути из `MEDIA_PATH`).
+В `docker-compose.prod.yml` эта папка монтируется в контейнер как `/app/media`, чтобы приложение видело изображения.
 
 ## Режимы
 

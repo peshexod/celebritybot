@@ -1,23 +1,57 @@
 {
   "characters": [
     {
-      "name": "Jason Statham",
-      "description": "Брутальное короткое поздравление",
-      "preview_image_path": "media/characters/statham/preview.jpg",
-      "elevenlabs_voice_id": "your-elevenlabs-voice-id",
+      "name": "John Volt",
+      "description": "Харизматичное поздравление в энергичном стиле",
+      "preview_image_path": "media/characters/john_volt/preview.jpg",
+      "elevenlabs_voice_id": "TX3LPaxmHKxFdv7VOQHJ",
       "sort_order": 10,
       "is_active": true,
       "creatives": [
         {
-          "label": "Классический образ",
-          "image_path": "media/characters/statham/creative_01.jpg",
+          "label": "Классический",
+          "image_path": "media/characters/john_volt/creative_01.jpg",
           "sort_order": 10,
           "is_active": true
         },
         {
-          "label": "Пиджак",
-          "image_path": "media/characters/statham/creative_02.jpg",
+          "label": "Пляжный образ",
+          "image_path": "media/characters/john_volt/creative_02.jpg",
           "sort_order": 20,
+          "is_active": true
+        },
+        {
+          "label": "Кэжуал",
+          "image_path": "media/characters/john_volt/creative_03.jpg",
+          "sort_order": 30,
+          "is_active": true
+        }
+      ]
+    },
+    {
+      "name": "Mila Ollsen",
+      "description": "Тёплое и душевное поздравление",
+      "preview_image_path": "media/characters/mila_ollsen/preview.jpg",
+      "elevenlabs_voice_id": "EXAVITQu4vr4xnSDxMaL",
+      "sort_order": 20,
+      "is_active": true,
+      "creatives": [
+        {
+          "label": "Классический",
+          "image_path": "media/characters/mila_ollsen/creative_01.jpg",
+          "sort_order": 10,
+          "is_active": true
+        },
+        {
+          "label": "Пляжный образ",
+          "image_path": "media/characters/mila_ollsen/creative_02.jpg",
+          "sort_order": 20,
+          "is_active": true
+        },
+        {
+          "label": "Кэжуал",
+          "image_path": "media/characters/mila_ollsen/creative_03.jpg",
+          "sort_order": 30,
           "is_active": true
         }
       ]

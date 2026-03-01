@@ -11,6 +11,14 @@ from bot.telegram.states import CharacterFSM, GreetingFSM
 router = Router()
 
 
+async def _resolve_character_preview(character_repo: CharacterRepository, character_id: int, fallback_path: str) -> str:
+    creatives = await character_repo.list_creatives(character_id, page=0)
+    if not creatives:
+        return fallback_path
+    first_creative = creatives[0]
+    return first_creative.telegram_file_id or first_creative.image_path
+
+
 @router.callback_query(F.data == "text_ok", GreetingFSM.waiting_text_approval)
 async def start_character_choice(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
     character_repo = CharacterRepository(session)
@@ -23,8 +31,9 @@ async def start_character_choice(callback: CallbackQuery, state: FSMContext, ses
         await callback.answer()
         return
     for character in characters:
+        preview_photo = await _resolve_character_preview(character_repo, character.id, character.preview_image_path)
         await callback.message.answer_photo(
-            photo=character.preview_image_path,
+            photo=preview_photo,
             caption=f"{character.name}\n{character.description}",
             reply_markup=characters_keyboard(characters, page),
         )
@@ -34,14 +43,16 @@ async def start_character_choice(callback: CallbackQuery, state: FSMContext, ses
 @router.callback_query(F.data.startswith("char_page:"), CharacterFSM.browsing_characters)
 async def paginate_characters(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
     page = int(callback.data.split(":", 1)[1])
-    characters = await CharacterRepository(session).list_characters(page=page)
+    character_repo = CharacterRepository(session)
+    characters = await character_repo.list_characters(page=page)
     if not characters:
         await callback.answer("Больше персонажей нет", show_alert=True)
         return
     await state.update_data(character_page=page)
     for character in characters:
+        preview_photo = await _resolve_character_preview(character_repo, character.id, character.preview_image_path)
         await callback.message.answer_photo(
-            photo=character.preview_image_path,
+            photo=preview_photo,
             caption=f"{character.name}\n{character.description}",
             reply_markup=characters_keyboard(characters, page),
         )
@@ -57,12 +68,15 @@ async def select_character(callback: CallbackQuery, state: FSMContext, session: 
         await callback.answer("Для персонажа нет образов", show_alert=True)
         return
     creative = creatives[0]
+    character_repo = CharacterRepository(session)
     await state.set_state(CharacterFSM.browsing_creatives)
-    await callback.message.answer_photo(
-        photo=creative.image_path,
+    message = await callback.message.answer_photo(
+        photo=creative.telegram_file_id or creative.image_path,
         caption=creative.label or "Выберите этот образ",
         reply_markup=creative_keyboard(creative.id, 0),
     )
+    if not creative.telegram_file_id and message.photo:
+        await character_repo.set_creative_telegram_file_id(creative.id, message.photo[-1].file_id)
     await callback.answer()
 
 
@@ -76,12 +90,15 @@ async def paginate_creatives(callback: CallbackQuery, state: FSMContext, session
         await callback.answer("Больше образов нет", show_alert=True)
         return
     creative = creatives[0]
+    character_repo = CharacterRepository(session)
     await state.update_data(creative_page=page)
-    await callback.message.answer_photo(
-        photo=creative.image_path,
+    message = await callback.message.answer_photo(
+        photo=creative.telegram_file_id or creative.image_path,
         caption=creative.label or "Выберите этот образ",
         reply_markup=creative_keyboard(creative.id, page),
     )
+    if not creative.telegram_file_id and message.photo:
+        await character_repo.set_creative_telegram_file_id(creative.id, message.photo[-1].file_id)
     await callback.answer()
 
 

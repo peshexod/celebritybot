@@ -59,6 +59,13 @@ class CharacterRepository:
     async def get_creative(self, creative_id: int) -> CharacterCreative | None:
         return await self.session.get(CharacterCreative, creative_id)
 
+    async def set_creative_telegram_file_id(self, creative_id: int, telegram_file_id: str) -> None:
+        creative = await self.session.get(CharacterCreative, creative_id)
+        if not creative:
+            return
+        creative.telegram_file_id = telegram_file_id
+        await self.session.commit()
+
 
 class OrderRepository:
     def __init__(self, session: AsyncSession):
