@@ -51,8 +51,8 @@ def creative_keyboard(creative_id: int, page: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="Выбрать этот образ", callback_data=f"creative:{creative_id}"))
     builder.row(
-        InlineKeyboardButton(text="⬅️", callback_data=f"creative_page:{max(0, page - 1)}"),
-        InlineKeyboardButton(text="➡️", callback_data=f"creative_page:{page + 1}"),
+        InlineKeyboardButton(text="⬅️ Предыдущий", callback_data=f"creative_page:{max(0, page - 1)}"),
+        InlineKeyboardButton(text="➡️ Следующий", callback_data=f"creative_page:{page + 1}"),
     )
     builder.row(InlineKeyboardButton(text="🔙 Другой персонаж", callback_data="change_character"))
     return builder.as_markup()

@@ -1,7 +1,8 @@
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, InputMediaPhoto, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import OrderStatus
@@ -13,6 +14,46 @@ from bot.utils.helpers import as_telegram_photo
 
 
 router = Router()
+
+
+async def _show_creative_card(
+    callback: CallbackQuery,
+    character_repo: CharacterRepository,
+    character_id: int,
+    page: int,
+    edit_existing: bool,
+) -> bool:
+    creatives = await character_repo.list_creatives(character_id, page=page)
+    if not creatives:
+        return False
+
+    creative = creatives[0]
+    caption = creative.label or "Выберите этот образ"
+    media = InputMediaPhoto(media=as_telegram_photo(creative.telegram_file_id or creative.image_path), caption=caption)
+
+    if edit_existing:
+        try:
+            result = await callback.message.edit_media(
+                media=media,
+                reply_markup=creative_keyboard(creative.id, page),
+            )
+        except TelegramBadRequest as exc:
+            if "message is not modified" not in str(exc).lower():
+                raise
+            result = None
+    else:
+        result = await callback.message.answer_photo(
+            photo=as_telegram_photo(creative.telegram_file_id or creative.image_path),
+            caption=caption,
+            reply_markup=creative_keyboard(creative.id, page),
+        )
+
+    if not creative.telegram_file_id:
+        sent_message = result if isinstance(result, Message) else None
+        if sent_message and sent_message.photo:
+            await character_repo.set_creative_telegram_file_id(creative.id, sent_message.photo[-1].file_id)
+
+    return True
 
 
 @router.callback_query(F.data == "text_ok", GreetingFSM.waiting_text_approval)
@@ -59,20 +100,19 @@ async def paginate_characters(callback: CallbackQuery, state: FSMContext, sessio
 async def select_character(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
     character_id = int(callback.data.split(":", 1)[1])
     await state.update_data(character_id=character_id, creative_page=0)
-    creatives = await CharacterRepository(session).list_creatives(character_id, page=0)
-    if not creatives:
+    character_repo = CharacterRepository(session)
+    has_creative = await _show_creative_card(
+        callback=callback,
+        character_repo=character_repo,
+        character_id=character_id,
+        page=0,
+        edit_existing=True,
+    )
+    if not has_creative:
         await callback.answer("Для персонажа нет образов", show_alert=True)
         return
-    creative = creatives[0]
-    character_repo = CharacterRepository(session)
+
     await state.set_state(CharacterFSM.browsing_creatives)
-    message = await callback.message.answer_photo(
-        photo=as_telegram_photo(creative.telegram_file_id or creative.image_path),
-        caption=creative.label or "Выберите этот образ",
-        reply_markup=creative_keyboard(creative.id, 0),
-    )
-    if not creative.telegram_file_id and message.photo:
-        await character_repo.set_creative_telegram_file_id(creative.id, message.photo[-1].file_id)
     await callback.answer()
 
 
@@ -81,20 +121,26 @@ async def paginate_creatives(callback: CallbackQuery, state: FSMContext, session
     data = await state.get_data()
     character_id = int(data["character_id"])
     page = int(callback.data.split(":", 1)[1])
-    creatives = await CharacterRepository(session).list_creatives(character_id, page=page)
-    if not creatives:
+    character_repo = CharacterRepository(session)
+    has_creative = await _show_creative_card(
+        callback=callback,
+        character_repo=character_repo,
+        character_id=character_id,
+        page=page,
+        edit_existing=True,
+    )
+    if not has_creative:
         await callback.answer("Больше образов нет", show_alert=True)
         return
-    creative = creatives[0]
-    character_repo = CharacterRepository(session)
+
     await state.update_data(creative_page=page)
-    message = await callback.message.answer_photo(
-        photo=as_telegram_photo(creative.telegram_file_id or creative.image_path),
-        caption=creative.label or "Выберите этот образ",
-        reply_markup=creative_keyboard(creative.id, page),
-    )
-    if not creative.telegram_file_id and message.photo:
-        await character_repo.set_creative_telegram_file_id(creative.id, message.photo[-1].file_id)
+    await callback.answer()
+
+
+@router.callback_query(F.data == "change_character", CharacterFSM.browsing_creatives)
+@router.callback_query(F.data == "change_character", CharacterFSM.confirming_order)
+async def change_character(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
+    await start_character_browsing(callback, state, session, page=0)
     await callback.answer()
 
 
