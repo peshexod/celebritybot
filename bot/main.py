@@ -104,8 +104,19 @@ async def run_polling() -> None:
 
 
 async def run_webhook() -> None:
+    bot = build_bot()
+    dp = build_dispatcher()
+    webhook_url = f"{settings.webhook_host.rstrip('/')}{settings.webhook_path}"
+    await bot.set_webhook(
+        url=webhook_url,
+        allowed_updates=dp.resolve_used_update_types(),
+        drop_pending_updates=True,
+    )
+    webhook_info = await bot.get_webhook_info()
+    logger.info("Telegram webhook set to: %s", webhook_info.url)
+
     monitor_task = asyncio.create_task(monitor_stuck_orders())
-    app = create_app()
+    app = create_app(bot, dp)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", 8080)
@@ -116,6 +127,8 @@ async def run_webhook() -> None:
             await asyncio.sleep(3600)
     finally:
         monitor_task.cancel()
+        await bot.delete_webhook(drop_pending_updates=False)
+        await bot.session.close()
         await runner.cleanup()
 
 

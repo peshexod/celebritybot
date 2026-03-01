@@ -1,6 +1,8 @@
 import json
 
 from aiohttp import web
+from aiogram import Bot, Dispatcher
+from aiogram.types import Update
 
 from bot.config import get_settings
 from bot.db.database import SessionLocal
@@ -77,12 +79,18 @@ async def yookassa_webhook(request: web.Request) -> web.Response:
 
 
 async def telegram_webhook(request: web.Request) -> web.Response:
-    body = await request.read()
-    return web.Response(text=json.dumps({"received": len(body)}), content_type="application/json")
+    bot: Bot = request.app["telegram_bot"]
+    dispatcher: Dispatcher = request.app["telegram_dispatcher"]
+    payload = await request.json()
+    update = Update.model_validate(payload)
+    await dispatcher.feed_update(bot, update)
+    return web.Response(text=json.dumps({"ok": True}), content_type="application/json")
 
 
-def create_app() -> web.Application:
+def create_app(bot: Bot, dispatcher: Dispatcher) -> web.Application:
     app = web.Application()
+    app["telegram_bot"] = bot
+    app["telegram_dispatcher"] = dispatcher
     app.router.add_get("/health", health)
     app.router.add_post("/webhook/yookassa", yookassa_webhook)
     app.router.add_post(settings.webhook_path, telegram_webhook)
