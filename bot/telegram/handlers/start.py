@@ -8,9 +8,38 @@ from bot.db.models import OrderStatus
 from bot.db.repositories import CharacterRepository, OrderRepository, UserRepository
 from bot.telegram.keyboards import characters_keyboard, main_menu_keyboard, order_confirm_keyboard
 from bot.telegram.states import CharacterFSM
+from bot.utils.helpers import as_telegram_photo
 
 
 router = Router()
+
+
+async def _send_character_preview(
+    callback: CallbackQuery,
+    character_repo: CharacterRepository,
+    character_id: int,
+    fallback_path: str,
+    caption: str,
+    page: int,
+    characters,
+) -> None:
+    creatives = await character_repo.list_creatives(character_id, page=0)
+    if not creatives:
+        await callback.message.answer_photo(
+            photo=as_telegram_photo(fallback_path),
+            caption=caption,
+            reply_markup=characters_keyboard(characters, page),
+        )
+        return
+
+    first_creative = creatives[0]
+    message = await callback.message.answer_photo(
+        photo=as_telegram_photo(first_creative.telegram_file_id or first_creative.image_path),
+        caption=caption,
+        reply_markup=characters_keyboard(characters, page),
+    )
+    if not first_creative.telegram_file_id and message.photo:
+        await character_repo.set_creative_telegram_file_id(first_creative.id, message.photo[-1].file_id)
 
 
 @router.message(CommandStart())
@@ -67,10 +96,14 @@ async def resume_order(callback: CallbackQuery, state: FSMContext, session: Asyn
     await state.set_state(CharacterFSM.browsing_characters)
     await state.update_data(character_page=page)
     for character in characters:
-        await callback.message.answer_photo(
-            photo=character.preview_image_path,
+        await _send_character_preview(
+            callback,
+            character_repo,
+            character.id,
+            character.preview_image_path,
             caption=f"{character.name}\n{character.description}",
-            reply_markup=characters_keyboard(characters, page),
+            page=page,
+            characters=characters,
         )
     await callback.answer("Продолжаем с выбора персонажа")
 
