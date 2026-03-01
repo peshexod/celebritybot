@@ -9,8 +9,8 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from bot.db.database import SessionLocal
-from bot.db.models import Character, CharacterCreative
+from bot.db.database import SessionLocal  # noqa: E402
+from bot.db.models import Character, CharacterCreative  # noqa: E402
 
 
 def _resolve_path(path_value: str, project_root: Path) -> str:
