@@ -6,7 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.models import OrderStatus
 from bot.db.repositories import CharacterRepository, OrderRepository, UserRepository
-from bot.telegram.keyboards import characters_keyboard, creative_keyboard, order_confirm_keyboard
+from bot.telegram.character_browsing import show_character_card, start_character_browsing
+from bot.telegram.keyboards import creative_keyboard, order_confirm_keyboard
 from bot.telegram.states import CharacterFSM, GreetingFSM
 from bot.utils.helpers import as_telegram_photo
 
@@ -14,55 +15,9 @@ from bot.utils.helpers import as_telegram_photo
 router = Router()
 
 
-async def _send_character_preview(
-    callback: CallbackQuery,
-    character_repo: CharacterRepository,
-    character_id: int,
-    fallback_path: str,
-    caption: str,
-    page: int,
-    characters,
-) -> None:
-    creatives = await character_repo.list_creatives(character_id, page=0)
-    if not creatives:
-        await callback.message.answer_photo(
-            photo=as_telegram_photo(fallback_path),
-            caption=caption,
-            reply_markup=characters_keyboard(characters, page),
-        )
-        return
-
-    first_creative = creatives[0]
-    message = await callback.message.answer_photo(
-        photo=as_telegram_photo(first_creative.telegram_file_id or first_creative.image_path),
-        caption=caption,
-        reply_markup=characters_keyboard(characters, page),
-    )
-    if not first_creative.telegram_file_id and message.photo:
-        await character_repo.set_creative_telegram_file_id(first_creative.id, message.photo[-1].file_id)
-
-
 @router.callback_query(F.data == "text_ok", GreetingFSM.waiting_text_approval)
 async def start_character_choice(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
-    character_repo = CharacterRepository(session)
-    page = 0
-    characters = await character_repo.list_characters(page=page)
-    if not characters:
-        await callback.message.answer("Список персонажей пока пуст.")
-        await callback.answer()
-        return
-    await state.set_state(CharacterFSM.browsing_characters)
-    await state.update_data(character_page=page)
-    for character in characters:
-        await _send_character_preview(
-            callback,
-            character_repo,
-            character.id,
-            character.preview_image_path,
-            caption=f"{character.name}\n{character.description}",
-            page=page,
-            characters=characters,
-        )
+    await start_character_browsing(callback, state, session, page=0)
     await callback.answer()
 
 
@@ -79,26 +34,7 @@ async def start_character_choice_recover(callback: CallbackQuery, state: FSMCont
     await state.clear()
     await state.update_data(order_id=order.id, final_text=order.text)
 
-    character_repo = CharacterRepository(session)
-    page = 0
-    characters = await character_repo.list_characters(page=page)
-    if not characters:
-        await callback.message.answer("Список персонажей пока пуст.")
-        await callback.answer()
-        return
-
-    await state.set_state(CharacterFSM.browsing_characters)
-    await state.update_data(character_page=page)
-    for character in characters:
-        await _send_character_preview(
-            callback,
-            character_repo,
-            character.id,
-            character.preview_image_path,
-            caption=f"{character.name}\n{character.description}",
-            page=page,
-            characters=characters,
-        )
+    await start_character_browsing(callback, state, session, page=0)
     await callback.answer("Продолжаем выбор персонажа")
 
 
@@ -106,21 +42,16 @@ async def start_character_choice_recover(callback: CallbackQuery, state: FSMCont
 async def paginate_characters(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
     page = int(callback.data.split(":", 1)[1])
     character_repo = CharacterRepository(session)
-    characters = await character_repo.list_characters(page=page)
-    if not characters:
+    has_character = await show_character_card(
+        callback=callback,
+        character_repo=character_repo,
+        page=page,
+        edit_existing=True,
+    )
+    if not has_character:
         await callback.answer("Больше персонажей нет", show_alert=True)
         return
     await state.update_data(character_page=page)
-    for character in characters:
-        await _send_character_preview(
-            callback,
-            character_repo,
-            character.id,
-            character.preview_image_path,
-            caption=f"{character.name}\n{character.description}",
-            page=page,
-            characters=characters,
-        )
     await callback.answer()
 
 
