@@ -1,4 +1,5 @@
 import sys
+import os
 from pathlib import Path
 from logging.config import fileConfig
 
@@ -12,6 +13,11 @@ if str(PROJECT_ROOT) not in sys.path:
 from bot.db.models import Base  # noqa: E402
 
 config = context.config
+
+env_db_url = os.getenv("ALEMBIC_DATABASE_URL") or os.getenv("DATABASE_URL")
+if env_db_url:
+    sync_db_url = env_db_url.replace("+asyncpg", "+psycopg2")
+    config.set_main_option("sqlalchemy.url", sync_db_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
