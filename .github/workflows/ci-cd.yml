@@ -4,6 +4,7 @@ on:
   push:
     branches: ["main"]
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,7 +30,7 @@ jobs:
         run: alembic upgrade head --sql > /tmp/migration.sql
 
   build-and-push:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: lint-test
     runs-on: ubuntu-latest
     steps:
@@ -59,7 +60,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build-and-push
     runs-on: ubuntu-latest
     environment: production
