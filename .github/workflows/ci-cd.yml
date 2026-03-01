@@ -123,6 +123,6 @@ jobs:
             set -e
             cd "$DEPLOY_PATH"
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
-            BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml pull bot
-            BOT_IMAGE="$BOT_IMAGE" docker compose -f docker-compose.prod.yml up -d
+            BOT_IMAGE="$BOT_IMAGE" docker compose --env-file "$DEPLOY_PATH/.env" -f docker-compose.prod.yml pull bot
+            BOT_IMAGE="$BOT_IMAGE" docker compose --env-file "$DEPLOY_PATH/.env" -f docker-compose.prod.yml up -d
             docker image prune -f
