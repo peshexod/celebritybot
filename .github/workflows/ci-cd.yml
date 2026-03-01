@@ -123,6 +123,16 @@ jobs:
             set -e
             cd "$DEPLOY_PATH"
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
+
+            HOST_BOT_PORT="$(grep -E '^BOT_PORT=' "$DEPLOY_PATH/.env" | tail -n1 | cut -d'=' -f2-)"
+            HOST_BOT_PORT="${HOST_BOT_PORT:-8080}"
+            CONFLICT_IDS="$(docker ps --format '{{.ID}} {{.Ports}}' | awk -v p="127.0.0.1:${HOST_BOT_PORT}->" '$0 ~ p {print $1}')"
+            if [ -n "$CONFLICT_IDS" ]; then
+              echo "Stopping containers using 127.0.0.1:${HOST_BOT_PORT}: $CONFLICT_IDS"
+              docker stop $CONFLICT_IDS || true
+              docker rm $CONFLICT_IDS || true
+            fi
+
             BOT_IMAGE="$BOT_IMAGE" docker compose --env-file "$DEPLOY_PATH/.env" -f docker-compose.prod.yml pull bot
-            BOT_IMAGE="$BOT_IMAGE" docker compose --env-file "$DEPLOY_PATH/.env" -f docker-compose.prod.yml up -d
+            BOT_IMAGE="$BOT_IMAGE" docker compose --env-file "$DEPLOY_PATH/.env" -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
