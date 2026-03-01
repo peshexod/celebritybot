@@ -7,6 +7,7 @@ from bot.db.models import Character, Order
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(InlineKeyboardButton(text="🎬 Создать поздравление", callback_data="create_greeting"))
+    builder.row(InlineKeyboardButton(text="▶️ Продолжить заказ", callback_data="resume_order"))
     builder.row(InlineKeyboardButton(text="📋 Мои заказы", callback_data="my_orders"))
     builder.row(InlineKeyboardButton(text="❓ Помощь", callback_data="help"))
     return builder.as_markup()

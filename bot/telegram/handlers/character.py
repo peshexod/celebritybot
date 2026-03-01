@@ -1,9 +1,11 @@
 from aiogram import F, Router
+from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.db.repositories import CharacterRepository, OrderRepository
+from bot.db.models import OrderStatus
+from bot.db.repositories import CharacterRepository, OrderRepository, UserRepository
 from bot.telegram.keyboards import characters_keyboard, creative_keyboard, order_confirm_keyboard
 from bot.telegram.states import CharacterFSM, GreetingFSM
 
@@ -24,12 +26,12 @@ async def start_character_choice(callback: CallbackQuery, state: FSMContext, ses
     character_repo = CharacterRepository(session)
     page = 0
     characters = await character_repo.list_characters(page=page)
-    await state.set_state(CharacterFSM.browsing_characters)
-    await state.update_data(character_page=page)
     if not characters:
         await callback.message.answer("Список персонажей пока пуст.")
         await callback.answer()
         return
+    await state.set_state(CharacterFSM.browsing_characters)
+    await state.update_data(character_page=page)
     for character in characters:
         preview_photo = await _resolve_character_preview(character_repo, character.id, character.preview_image_path)
         await callback.message.answer_photo(
@@ -38,6 +40,39 @@ async def start_character_choice(callback: CallbackQuery, state: FSMContext, ses
             reply_markup=characters_keyboard(characters, page),
         )
     await callback.answer()
+
+
+@router.callback_query(StateFilter(None), F.data == "text_ok")
+async def start_character_choice_recover(callback: CallbackQuery, state: FSMContext, session: AsyncSession) -> None:
+    user = await UserRepository(session).get_or_create_telegram_user(callback.from_user.id, callback.from_user.username)
+    order = await OrderRepository(session).get_latest_user_order(user.id)
+
+    if not order or order.status != OrderStatus.pending_payment:
+        await callback.message.answer("Контекст предыдущего шага утерян. Нажмите «Создать поздравление» или «Продолжить заказ».")
+        await callback.answer()
+        return
+
+    await state.clear()
+    await state.update_data(order_id=order.id, final_text=order.text)
+
+    character_repo = CharacterRepository(session)
+    page = 0
+    characters = await character_repo.list_characters(page=page)
+    if not characters:
+        await callback.message.answer("Список персонажей пока пуст.")
+        await callback.answer()
+        return
+
+    await state.set_state(CharacterFSM.browsing_characters)
+    await state.update_data(character_page=page)
+    for character in characters:
+        preview_photo = await _resolve_character_preview(character_repo, character.id, character.preview_image_path)
+        await callback.message.answer_photo(
+            photo=preview_photo,
+            caption=f"{character.name}\n{character.description}",
+            reply_markup=characters_keyboard(characters, page),
+        )
+    await callback.answer("Продолжаем выбор персонажа")
 
 
 @router.callback_query(F.data.startswith("char_page:"), CharacterFSM.browsing_characters)

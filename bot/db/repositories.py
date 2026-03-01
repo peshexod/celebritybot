@@ -149,6 +149,15 @@ class OrderRepository:
         result = await self.session.scalars(query)
         return list(result)
 
+    async def get_latest_user_order(self, user_id: int) -> Order | None:
+        query = (
+            select(Order)
+            .where(Order.user_id == user_id)
+            .order_by(Order.created_at.desc())
+            .limit(1)
+        )
+        return await self.session.scalar(query)
+
     async def list_stuck_orders(self, older_than_minutes: int = 15) -> list[Order]:
         threshold = datetime.now(UTC).replace(tzinfo=None) - timedelta(minutes=older_than_minutes)
         query = select(Order).where(
