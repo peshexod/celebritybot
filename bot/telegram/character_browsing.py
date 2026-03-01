@@ -14,10 +14,15 @@ async def show_character_card(
     character_repo: CharacterRepository,
     page: int,
     edit_existing: bool,
-) -> bool:
-    characters = await character_repo.list_characters(page=page, page_size=1)
+) -> int | None:
+    total_characters = await character_repo.count_characters()
+    if total_characters == 0:
+        return None
+
+    normalized_page = page % total_characters
+    characters = await character_repo.list_characters(page=normalized_page, page_size=1)
     if not characters:
-        return False
+        return None
 
     character = characters[0]
     creatives = await character_repo.list_creatives(character.id, page=0)
@@ -28,8 +33,8 @@ async def show_character_card(
         else character.preview_image_path
     )
 
-    caption = f"{character.name}\n{character.description}"
-    reply_markup = characters_keyboard([character], page)
+    caption = f"{character.name} ({normalized_page + 1}/{total_characters})\n{character.description}"
+    reply_markup = characters_keyboard([character], normalized_page)
     media = InputMediaPhoto(media=as_telegram_photo(preview_source), caption=caption)
 
     if edit_existing:
@@ -51,7 +56,7 @@ async def show_character_card(
         if sent_message and sent_message.photo:
             await character_repo.set_creative_telegram_file_id(first_creative.id, sent_message.photo[-1].file_id)
 
-    return True
+    return normalized_page
 
 
 async def start_character_browsing(
@@ -61,16 +66,16 @@ async def start_character_browsing(
     page: int = 0,
 ) -> bool:
     character_repo = CharacterRepository(session)
-    has_character = await show_character_card(
+    normalized_page = await show_character_card(
         callback=callback,
         character_repo=character_repo,
         page=page,
         edit_existing=False,
     )
-    if not has_character:
+    if normalized_page is None:
         await callback.message.answer("Список персонажей пока пуст.")
         return False
 
     await state.set_state(CharacterFSM.browsing_characters)
-    await state.update_data(character_page=page)
+    await state.update_data(character_page=normalized_page)
     return True

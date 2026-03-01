@@ -36,9 +36,20 @@ async def handle_own_text(message: Message, state: FSMContext, session: AsyncSes
     if len(message.text or "") > settings.max_text_length:
         await message.answer(f"Текст слишком длинный. Максимум {settings.max_text_length} символов.")
         return
-    user = await UserRepository(session).get_or_create_telegram_user(message.from_user.id, message.from_user.username)
-    order = await OrderRepository(session).create_order(user.id, message.text, settings.order_price, Platform.telegram)
-    await state.update_data(order_id=order.id, final_text=message.text)
+
+    data = await state.get_data()
+    order_repo = OrderRepository(session)
+
+    existing_order_id = data.get("order_id")
+    if existing_order_id:
+        await order_repo.update_order_text(int(existing_order_id), message.text)
+        order_id = int(existing_order_id)
+    else:
+        user = await UserRepository(session).get_or_create_telegram_user(message.from_user.id, message.from_user.username)
+        order = await order_repo.create_order(user.id, message.text, settings.order_price, Platform.telegram)
+        order_id = order.id
+
+    await state.update_data(order_id=order_id, final_text=message.text)
     await state.set_state(GreetingFSM.waiting_text_approval)
     await message.answer(f"Текст для согласования:\n\n{message.text}", reply_markup=text_approval_keyboard())
 

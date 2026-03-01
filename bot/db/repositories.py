@@ -1,7 +1,7 @@
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
-from sqlalchemy import Select, and_, select
+from sqlalchemy import Select, and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -45,6 +45,11 @@ class CharacterRepository:
     async def get_character(self, character_id: int) -> Character | None:
         return await self.session.get(Character, character_id)
 
+    async def count_characters(self) -> int:
+        query = select(func.count(Character.id)).where(Character.is_active.is_(True))
+        count = await self.session.scalar(query)
+        return int(count or 0)
+
     async def list_creatives(self, character_id: int, page: int = 0, page_size: int = 1) -> list[CharacterCreative]:
         query = (
             select(CharacterCreative)
@@ -58,6 +63,13 @@ class CharacterRepository:
 
     async def get_creative(self, creative_id: int) -> CharacterCreative | None:
         return await self.session.get(CharacterCreative, creative_id)
+
+    async def count_creatives(self, character_id: int) -> int:
+        query = select(func.count(CharacterCreative.id)).where(
+            and_(CharacterCreative.character_id == character_id, CharacterCreative.is_active.is_(True))
+        )
+        count = await self.session.scalar(query)
+        return int(count or 0)
 
     async def set_creative_telegram_file_id(self, creative_id: int, telegram_file_id: str) -> None:
         creative = await self.session.get(CharacterCreative, creative_id)
@@ -108,6 +120,14 @@ class OrderRepository:
         if not order:
             return
         order.payment_id = payment_id
+        order.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        await self.session.commit()
+
+    async def update_order_text(self, order_id: int, text: str) -> None:
+        order = await self.session.get(Order, order_id)
+        if not order:
+            return
+        order.text = text
         order.updated_at = datetime.now(UTC).replace(tzinfo=None)
         await self.session.commit()
 
