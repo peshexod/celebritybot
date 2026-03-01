@@ -70,6 +70,8 @@ jobs:
       GHCR_TOKEN: ${{ github.token }}
       BOT_IMAGE: ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
     steps:
+      - uses: actions/checkout@v4
+
       - name: Ensure deploy directory exists
         uses: appleboy/ssh-action@v1.0.3
         with:
