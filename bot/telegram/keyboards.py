@@ -60,7 +60,7 @@ def creative_keyboard(creative_id: int, page: int) -> InlineKeyboardMarkup:
 
 def order_confirm_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="💳 Оплатить", callback_data="pay_order"))
+    builder.row(InlineKeyboardButton(text="💳 Оплатить 499 руб", callback_data="pay_order"))
     builder.row(InlineKeyboardButton(text="🔙 Изменить текст", callback_data="change_text"))
     builder.row(InlineKeyboardButton(text="🔙 Изменить образ", callback_data="change_creative"))
     builder.row(InlineKeyboardButton(text="🔙 Изменить персонажа", callback_data="change_character"))
@@ -68,7 +68,7 @@ def order_confirm_keyboard() -> InlineKeyboardMarkup:
 
 
 def payment_url_keyboard(url: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Оплатить в ЮКасса", url=url)]])
+    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Оплатить 499 руб в ЮКасса", url=url)]])
 
 
 def orders_keyboard(orders: list[Order], page: int) -> InlineKeyboardMarkup:
