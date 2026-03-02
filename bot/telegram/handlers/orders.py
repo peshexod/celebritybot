@@ -1,5 +1,6 @@
 from aiogram import F, Router
-from aiogram.types import CallbackQuery
+from aiogram.filters import Command
+from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from bot.db.repositories import OrderRepository, UserRepository
@@ -20,22 +21,31 @@ STATUS_MAP = {
 }
 
 
-@router.callback_query(F.data == "my_orders")
-async def show_orders(callback: CallbackQuery, session: AsyncSession) -> None:
-    user = await UserRepository(session).get_or_create_telegram_user(callback.from_user.id, callback.from_user.username)
+async def _send_user_orders(message: Message, session: AsyncSession) -> bool:
+    user = await UserRepository(session).get_or_create_telegram_user(message.from_user.id, message.from_user.username)
     orders = await OrderRepository(session).list_user_orders(user.id, page=0)
     if not orders:
-        await callback.message.answer("У вас пока нет заказов.")
-        await callback.answer()
-        return
+        await message.answer("У вас пока нет заказов.")
+        return False
 
     rows = []
     for order in orders:
         status_label = STATUS_MAP.get(order.status.value, order.status.value)
         rows.append(f"#{order.id} | {status_label} | попытка {order.attempt_number}")
 
-    await callback.message.answer("Ваши заказы:\n" + "\n".join(rows), reply_markup=orders_keyboard(orders, 0))
+    await message.answer("Ваши заказы:\n" + "\n".join(rows), reply_markup=orders_keyboard(orders, 0))
+    return True
+
+
+@router.callback_query(F.data == "my_orders")
+async def show_orders(callback: CallbackQuery, session: AsyncSession) -> None:
+    await _send_user_orders(callback.message, session)
     await callback.answer()
+
+
+@router.message(Command("my_orders"))
+async def my_orders_command(message: Message, session: AsyncSession) -> None:
+    await _send_user_orders(message, session)
 
 
 @router.callback_query(F.data.startswith("orders_page:"))

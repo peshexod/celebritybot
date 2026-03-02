@@ -1,4 +1,5 @@
 from aiogram import F, Router
+from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +23,13 @@ async def create_greeting_start(callback: CallbackQuery, state: FSMContext) -> N
     await state.set_state(GreetingFSM.waiting_text_choice)
     await callback.message.answer("Выберите способ ввода текста:", reply_markup=text_choice_keyboard())
     await callback.answer()
+
+
+@router.message(Command("create_present"))
+async def create_present_command(message: Message, state: FSMContext) -> None:
+    await state.clear()
+    await state.set_state(GreetingFSM.waiting_text_choice)
+    await message.answer("Выберите способ ввода текста:", reply_markup=text_choice_keyboard())
 
 
 @router.callback_query(F.data == "own_text", GreetingFSM.waiting_text_choice)

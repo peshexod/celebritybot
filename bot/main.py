@@ -11,7 +11,7 @@ from bot.services.order_service import OrderService
 from bot.services.payment_service import PaymentService
 from bot.services.video_service import VideoService
 from bot.services.voice_service import VoiceService
-from bot.telegram.bot import build_bot, build_dispatcher
+from bot.telegram.bot import build_bot, build_dispatcher, setup_bot_commands
 from bot.web.webhooks import create_app
 
 
@@ -92,6 +92,7 @@ async def monitor_pending_payments() -> None:
 
 async def run_polling() -> None:
     bot = build_bot()
+    await setup_bot_commands(bot)
     dp = build_dispatcher()
     monitor_task = asyncio.create_task(monitor_stuck_orders())
     payment_monitor_task = asyncio.create_task(monitor_pending_payments())
@@ -105,6 +106,7 @@ async def run_polling() -> None:
 
 async def run_webhook() -> None:
     bot = build_bot()
+    await setup_bot_commands(bot)
     dp = build_dispatcher()
     webhook_url = f"{settings.webhook_host.rstrip('/')}{settings.webhook_path}"
     await bot.set_webhook(
