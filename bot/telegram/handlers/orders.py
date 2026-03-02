@@ -52,3 +52,32 @@ async def paginate_orders(callback: CallbackQuery, session: AsyncSession) -> Non
         rows.append(f"#{order.id} | {status_label} | попытка {order.attempt_number}")
     await callback.message.answer("Ваши заказы:\n" + "\n".join(rows), reply_markup=orders_keyboard(orders, page))
     await callback.answer()
+
+
+@router.callback_query(F.data.startswith("order:"))
+async def show_order_details(callback: CallbackQuery, session: AsyncSession) -> None:
+    user = await UserRepository(session).get_or_create_telegram_user(callback.from_user.id, callback.from_user.username)
+
+    try:
+        order_id = int(callback.data.split(":", 1)[1])
+    except (IndexError, ValueError):
+        await callback.answer("Некорректный заказ", show_alert=True)
+        return
+
+    order = await OrderRepository(session).get_order(order_id)
+    if not order or order.user_id != user.id:
+        await callback.answer("Заказ не найден", show_alert=True)
+        return
+
+    status_label = STATUS_MAP.get(order.status.value, order.status.value)
+    details = [
+        f"Заказ #{order.id}",
+        f"Статус: {status_label}",
+        f"Попытка: {order.attempt_number}/{order.max_attempts}",
+        f"Текст: {order.text}",
+    ]
+    if order.error_message:
+        details.append(f"Ошибка: {order.error_message}")
+
+    await callback.message.answer("\n".join(details))
+    await callback.answer()
