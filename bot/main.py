@@ -7,7 +7,7 @@ from bot.config import get_settings
 from bot.db.database import SessionLocal
 from bot.db.models import OrderStatus, PaymentStatus, Platform
 from bot.db.repositories import OrderRepository, PaymentRepository
-from bot.services.order_service import OrderService
+from bot.services.order_service import OrderService, OrderServiceLegacy
 from bot.services.payment_service import PaymentService
 from bot.services.video_service import VideoService
 from bot.services.voice_service import VoiceService
@@ -38,7 +38,8 @@ async def _start_generation_for_paid_order(session, order_id: int) -> None:
     if not user_platform_id:
         return
 
-    order_service = OrderService(voice_service=VoiceService(), video_service=VideoService())
+    # Use the new async webhook-based OrderService
+    order_service = OrderService()
     await order_service.process_paid_order(
         session=session,
         order_id=order.id,

@@ -148,6 +148,73 @@ class OrderRepository:
         order.updated_at = datetime.now(UTC).replace(tzinfo=None)
         await self.session.commit()
 
+    # -------------------------------------------------------------------------
+    # Chatterbox TTS job tracking methods
+    # -------------------------------------------------------------------------
+
+    async def set_chatterbox_job(self, order_id: int, job_id: str) -> None:
+        order = await self.session.get(Order, order_id)
+        if not order:
+            return
+        order.chatterbox_job_id = job_id
+        order.status = OrderStatus.generating_audio
+        order.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        await self.session.commit()
+
+    async def get_order_by_chatterbox_job(self, job_id: str) -> Order | None:
+        query = select(Order).where(Order.chatterbox_job_id == job_id)
+        return await self.session.scalar(query)
+
+    async def increment_chatterbox_attempt(self, order_id: int, error_message: str) -> None:
+        order = await self.session.get(Order, order_id)
+        if not order:
+            return
+        order.chatterbox_attempt += 1
+        order.status = OrderStatus.retrying
+        order.error_message = error_message
+        order.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        await self.session.commit()
+
+    # -------------------------------------------------------------------------
+    # Sonic video job tracking methods
+    # -------------------------------------------------------------------------
+
+    async def set_sonic_job(self, order_id: int, job_id: str) -> None:
+        order = await self.session.get(Order, order_id)
+        if not order:
+            return
+        order.sonic_job_id = job_id
+        order.status = OrderStatus.generating_video
+        order.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        await self.session.commit()
+
+    async def get_order_by_sonic_job(self, job_id: str) -> Order | None:
+        query = select(Order).where(Order.sonic_job_id == job_id)
+        return await self.session.scalar(query)
+
+    async def increment_sonic_attempt(self, order_id: int, error_message: str) -> None:
+        order = await self.session.get(Order, order_id)
+        if not order:
+            return
+        order.sonic_attempt += 1
+        order.status = OrderStatus.retrying
+        order.error_message = error_message
+        order.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        await self.session.commit()
+
+    # -------------------------------------------------------------------------
+    # Video file tracking
+    # -------------------------------------------------------------------------
+
+    async def set_video_file_id(self, order_id: int, file_id: str) -> None:
+        order = await self.session.get(Order, order_id)
+        if not order:
+            return
+        order.video_file_id = file_id
+        order.status = OrderStatus.completed
+        order.updated_at = datetime.now(UTC).replace(tzinfo=None)
+        await self.session.commit()
+
     async def increment_attempt(self, order_id: int, error_message: str) -> None:
         order = await self.session.get(Order, order_id)
         if not order:
