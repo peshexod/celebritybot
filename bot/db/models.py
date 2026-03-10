@@ -88,6 +88,15 @@ class Order(Base):
     status: Mapped[OrderStatus] = mapped_column(Enum(OrderStatus), default=OrderStatus.pending_payment, nullable=False)
     payment_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     runpod_job_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    # Chatterbox TTS job tracking
+    chatterbox_job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    chatterbox_attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Sonic video job tracking
+    sonic_job_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    sonic_attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    # Final video file ID from Telegram
+    video_file_id: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    # Legacy attempt tracking (kept for backward compatibility)
     attempt_number: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

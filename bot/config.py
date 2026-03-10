@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
     runpod_api_key: str = Field(default="", alias="RUNPOD_API_KEY")
     runpod_endpoint: str = Field(default="", alias="RUNPOD_ENDPOINT")
+    runpod_chatterbox_endpoint: str = Field(default="", alias="RUNPOD_CHATTERBOX_ENDPOINT")
 
     yookassa_shop_id: str = Field(default="", alias="YOOKASSA_SHOP_ID")
     yookassa_secret_key: str = Field(default="", alias="YOOKASSA_SECRET_KEY")
