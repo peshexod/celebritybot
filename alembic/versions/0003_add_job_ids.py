@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 revision = '0003'
-down_revision = '0002'
+down_revision = '0002_creative_tg_file_id'
 branch_labels = None
 depends_on = None
 
