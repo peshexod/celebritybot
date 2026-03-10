@@ -7,10 +7,8 @@ from bot.config import get_settings
 from bot.db.database import SessionLocal
 from bot.db.models import OrderStatus, PaymentStatus, Platform
 from bot.db.repositories import OrderRepository, PaymentRepository
-from bot.services.order_service import OrderService, OrderServiceLegacy
+from bot.services.order_service import OrderService
 from bot.services.payment_service import PaymentService
-from bot.services.video_service import VideoService
-from bot.services.voice_service import VoiceService
 from bot.telegram.bot import build_bot, build_dispatcher, setup_bot_commands
 from bot.web.webhooks import create_app
 

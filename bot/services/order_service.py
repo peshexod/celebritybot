@@ -2,6 +2,7 @@
 
 import asyncio
 import base64
+import logging
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +12,7 @@ from bot.db.models import OrderStatus
 from bot.db.repositories import CharacterRepository, OrderRepository
 from bot.services.chatterbox_service import ChatterboxService
 from bot.services.video_service import VideoService
+from bot.services.voice_service import VoiceService
 
 
 settings = get_settings()
@@ -107,9 +109,6 @@ class OrderService:
 # -------------------------------------------------------------------------
 # Legacy sync processing (kept for backward compatibility with old flow)
 # -------------------------------------------------------------------------
-
-import logging
-from bot.services.voice_service import VoiceService
 
 logger = logging.getLogger(__name__)
 

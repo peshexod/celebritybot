@@ -2,11 +2,10 @@ import base64
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from aiohttp import web
 from aiogram import Bot, Dispatcher
-from aiogram.types import Update, InputFile
+from aiogram.types import Update
 
 from bot.config import get_settings
 from bot.db.database import SessionLocal
