@@ -1,7 +1,12 @@
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from bot.config import get_settings
 from bot.db.models import Character, Order
+from bot.texts import OCCASION_OPTIONS, payment_button_text, payment_link_button_text
+
+
+settings = get_settings()
 
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
@@ -22,8 +27,7 @@ def text_choice_keyboard() -> InlineKeyboardMarkup:
 
 def occasion_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    options = ["День рождения", "Свадьба", "Новый год", "8 марта", "Юбилей", "Другое"]
-    for option in options:
+    for option in OCCASION_OPTIONS:
         builder.row(InlineKeyboardButton(text=option, callback_data=f"occasion:{option}"))
     return builder.as_markup()
 
@@ -60,7 +64,7 @@ def creative_keyboard(creative_id: int, page: int) -> InlineKeyboardMarkup:
 
 def order_confirm_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="💳 Оплатить 499 руб", callback_data="pay_order"))
+    builder.row(InlineKeyboardButton(text=payment_button_text(settings.order_price), callback_data="pay_order"))
     builder.row(InlineKeyboardButton(text="🔙 Изменить текст", callback_data="change_text"))
     builder.row(InlineKeyboardButton(text="🔙 Изменить образ", callback_data="change_creative"))
     builder.row(InlineKeyboardButton(text="🔙 Изменить персонажа", callback_data="change_character"))
@@ -68,7 +72,9 @@ def order_confirm_keyboard() -> InlineKeyboardMarkup:
 
 
 def payment_url_keyboard(url: str) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text="Оплатить 499 руб в ЮКасса", url=url)]])
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[InlineKeyboardButton(text=payment_link_button_text(settings.order_price), url=url)]]
+    )
 
 
 def orders_keyboard(orders: list[Order], page: int) -> InlineKeyboardMarkup:

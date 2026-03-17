@@ -3,91 +3,89 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from bot.db.repositories import OrderRepository, UserRepository
+from bot.db.models import Platform
+from bot.handlers.shared import get_user_order_details_common, get_user_orders_common
+from bot.texts import (
+    ORDER_INVALID_TEXT,
+    ORDER_NOT_FOUND_TEXT,
+    ORDERS_EMPTY_TEXT,
+    ORDERS_PAGE_EMPTY_TEXT,
+    order_details_text,
+    order_row_text,
+    orders_text,
+)
 from bot.telegram.keyboards import orders_keyboard
 
 
 router = Router()
 
-STATUS_MAP = {
-    "pending_payment": "⏳ Ожидает оплаты",
-    "paid": "💳 Оплачен",
-    "generating_audio": "🔄 Генерация аудио",
-    "generating_video": "🔄 Генерируется",
-    "retrying": "🔄 Повторная попытка",
-    "completed": "✅ Готово",
-    "refunded": "💸 Возврат средств",
-    "failed": "❌ Ошибка",
-}
 
-
-async def _send_user_orders(message: Message, session: AsyncSession) -> bool:
-    user = await UserRepository(session).get_or_create_telegram_user(message.from_user.id, message.from_user.username)
-    orders = await OrderRepository(session).list_user_orders(user.id, page=0)
+async def _send_user_orders(message: Message, session: AsyncSession, page: int = 0) -> bool:
+    orders = await get_user_orders_common(
+        user_id=message.from_user.id,
+        username=message.from_user.username,
+        platform=Platform.telegram,
+        session=session,
+        page=page,
+    )
     if not orders:
-        await message.answer("У вас пока нет заказов.")
+        if page == 0:
+            await message.answer(ORDERS_EMPTY_TEXT)
         return False
 
-    rows = []
-    for order in orders:
-        status_label = STATUS_MAP.get(order.status.value, order.status.value)
-        rows.append(f"#{order.id} | {status_label} | попытка {order.attempt_number}")
-
-    await message.answer("Ваши заказы:\n" + "\n".join(rows), reply_markup=orders_keyboard(orders, 0))
+    rows = [order_row_text(order.id, order.status.value, order.attempt_number) for order in orders]
+    await message.answer(orders_text(rows), reply_markup=orders_keyboard(orders, page))
     return True
 
 
 @router.callback_query(F.data == "my_orders")
 async def show_orders(callback: CallbackQuery, session: AsyncSession) -> None:
-    await _send_user_orders(callback.message, session)
+    await _send_user_orders(callback.message, session, page=0)
     await callback.answer()
 
 
 @router.message(Command("my_orders"))
 async def my_orders_command(message: Message, session: AsyncSession) -> None:
-    await _send_user_orders(message, session)
+    await _send_user_orders(message, session, page=0)
 
 
 @router.callback_query(F.data.startswith("orders_page:"))
 async def paginate_orders(callback: CallbackQuery, session: AsyncSession) -> None:
     page = int(callback.data.split(":", 1)[1])
-    user = await UserRepository(session).get_or_create_telegram_user(callback.from_user.id, callback.from_user.username)
-    orders = await OrderRepository(session).list_user_orders(user.id, page=page)
-    if not orders:
-        await callback.answer("Нет заказов на этой странице", show_alert=True)
+    ok = await _send_user_orders(callback.message, session, page=page)
+    if not ok:
+        await callback.answer(ORDERS_PAGE_EMPTY_TEXT, show_alert=True)
         return
-    rows = []
-    for order in orders:
-        status_label = STATUS_MAP.get(order.status.value, order.status.value)
-        rows.append(f"#{order.id} | {status_label} | попытка {order.attempt_number}")
-    await callback.message.answer("Ваши заказы:\n" + "\n".join(rows), reply_markup=orders_keyboard(orders, page))
     await callback.answer()
 
 
 @router.callback_query(F.data.startswith("order:"))
 async def show_order_details(callback: CallbackQuery, session: AsyncSession) -> None:
-    user = await UserRepository(session).get_or_create_telegram_user(callback.from_user.id, callback.from_user.username)
-
     try:
         order_id = int(callback.data.split(":", 1)[1])
     except (IndexError, ValueError):
-        await callback.answer("Некорректный заказ", show_alert=True)
+        await callback.answer(ORDER_INVALID_TEXT, show_alert=True)
         return
 
-    order = await OrderRepository(session).get_order(order_id)
-    if not order or order.user_id != user.id:
-        await callback.answer("Заказ не найден", show_alert=True)
+    order = await get_user_order_details_common(
+        user_id=callback.from_user.id,
+        username=callback.from_user.username,
+        platform=Platform.telegram,
+        order_id=order_id,
+        session=session,
+    )
+    if not order:
+        await callback.answer(ORDER_NOT_FOUND_TEXT, show_alert=True)
         return
 
-    status_label = STATUS_MAP.get(order.status.value, order.status.value)
-    details = [
-        f"Заказ #{order.id}",
-        f"Статус: {status_label}",
-        f"Попытка: {order.attempt_number}/{order.max_attempts}",
-        f"Текст: {order.text}",
-    ]
-    if order.error_message:
-        details.append(f"Ошибка: {order.error_message}")
-
-    await callback.message.answer("\n".join(details))
+    await callback.message.answer(
+        order_details_text(
+            order_id=order.id,
+            status=order.status.value,
+            attempt=order.attempt_number,
+            max_attempts=order.max_attempts,
+            text=order.text,
+            error=order.error_message,
+        )
+    )
     await callback.answer()
