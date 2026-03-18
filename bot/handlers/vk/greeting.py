@@ -25,7 +25,7 @@ from bot.texts import (
 )
 from bot.vk.helpers import answer_message, extract_payload, payload_command
 from bot.vk.keyboards import occasion_keyboard_vk, text_approval_keyboard_vk, text_choice_keyboard_vk
-from bot.vk.states import VkUserState, get_state_payload, get_state_name, is_state, set_state, update_state
+from bot.vk.states import VkUserState, get_state_payload, is_state, set_state, update_state
 
 
 settings = get_settings()

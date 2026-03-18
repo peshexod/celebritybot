@@ -22,7 +22,7 @@ from bot.texts import (
     creative_caption,
     order_confirmation_text,
 )
-from bot.vk.helpers import answer_message, extract_payload, payload_command, send_photo_message
+from bot.vk.helpers import answer_message, extract_payload, send_photo_message
 from bot.vk.keyboards import characters_keyboard_vk, creative_keyboard_vk, order_confirm_keyboard_vk
 from bot.vk.states import VkUserState, get_state_payload, get_state_name, set_state
 
