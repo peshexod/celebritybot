@@ -10,7 +10,6 @@ from bot.telegram.character_browsing import start_character_browsing
 from bot.telegram.keyboards import main_menu_keyboard, order_confirm_keyboard
 from bot.telegram.states import CharacterFSM
 from bot.texts import (
-    CONTINUE_CHARACTER_CHOICE_TEXT,
     GREETING_TEXT,
     HELP_TEXT,
     NO_ACTIVE_ORDER_TEXT,
