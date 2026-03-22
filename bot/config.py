@@ -20,11 +20,25 @@ class Settings(BaseSettings):
     runpod_endpoint: str = Field(default="", alias="RUNPOD_ENDPOINT")
     runpod_chatterbox_endpoint: str = Field(default="", alias="RUNPOD_CHATTERBOX_ENDPOINT")
 
+    s3_endpoint: str = Field(default="", alias="S3_ENDPOINT")
+    s3_bucket: str = Field(default="", alias="S3_BUCKET")
+    s3_access_key: str = Field(default="", alias="S3_ACCESS_KEY")
+    s3_secret_key: str = Field(default="", alias="S3_SECRET_KEY")
+    s3_public_url_template: str = Field(default="{endpoint}/{bucket}/{key}", alias="S3_PUBLIC_URL_TEMPLATE")
+
     yookassa_shop_id: str = Field(default="", alias="YOOKASSA_SHOP_ID")
     yookassa_secret_key: str = Field(default="", alias="YOOKASSA_SECRET_KEY")
 
     webhook_host: str = Field(default="http://localhost:8080", alias="WEBHOOK_HOST")
     webhook_path: str = Field(default="/webhook/telegram", alias="WEBHOOK_PATH")
+
+    # Base URL for voice sample static files served by the bot web server.
+    # Used by ChatterboxService to construct reference_audio_url pointing to
+    # the bot's own static /media/voices/ endpoint (accessible from RunPod).
+    voice_static_base_url: str = Field(
+        default="http://localhost:8080/media/voices",
+        alias="VOICE_STATIC_BASE_URL",
+    )
 
     order_price: int = Field(default=299, alias="ORDER_PRICE")
     max_text_length: int = Field(default=500, alias="MAX_TEXT_LENGTH")

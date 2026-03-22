@@ -46,6 +46,7 @@ async def seed_from_catalog(catalog_path: Path) -> None:
                 character.description = item.get("description", "")
                 character.preview_image_path = preview_path
                 character.elevenlabs_voice_id = item["elevenlabs_voice_id"]
+                character.voice_sample_path = item.get("voice_sample_path", "")
                 character.sort_order = int(item.get("sort_order", 0))
                 character.is_active = bool(item.get("is_active", True))
             else:
@@ -54,6 +55,7 @@ async def seed_from_catalog(catalog_path: Path) -> None:
                     description=item.get("description", ""),
                     preview_image_path=preview_path,
                     elevenlabs_voice_id=item["elevenlabs_voice_id"],
+                    voice_sample_path=item.get("voice_sample_path", ""),
                     sort_order=int(item.get("sort_order", 0)),
                     is_active=bool(item.get("is_active", True)),
                 )

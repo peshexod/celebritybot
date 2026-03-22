@@ -5,6 +5,7 @@
       "description": "Харизматичное поздравление в энергичном стиле",
       "preview_image_path": "media/characters/john_volt/preview.jpg",
       "elevenlabs_voice_id": "TX3LPaxmHKxFdv7VOQHJ",
+      "voice_sample_path": "media/voices/john_volt.wav",
       "sort_order": 10,
       "is_active": true,
       "creatives": [
@@ -33,6 +34,7 @@
       "description": "Тёплое и душевное поздравление",
       "preview_image_path": "media/characters/mila_ollsen/preview.jpg",
       "elevenlabs_voice_id": "EXAVITQu4vr4xnSDxMaL",
+      "voice_sample_path": "media/voices/mila_ollsen.wav",
       "sort_order": 20,
       "is_active": true,
       "creatives": [

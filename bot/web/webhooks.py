@@ -203,15 +203,17 @@ async def chatterbox_webhook(request: web.Request) -> web.Response:
             # Retry: increment attempt and resubmit
             await order_repo.increment_chatterbox_attempt(order.id, error_msg)
 
-            # Get character voice and resubmit
+            # Get character voice sample and resubmit
             character = await character_repo.get_character(order.character_id) if order.character_id else None
             if character:
                 webhook_url = f"{settings.webhook_host.rstrip('/')}/webhook/chatterbox"
+                voice_sample_path = character.voice_sample_path or ""
+                reference_audio_url = f"{settings.voice_static_base_url.rstrip('/')}/{voice_sample_path.lstrip('/')}" if voice_sample_path else ""
                 chatterbox_service = ChatterboxService()
                 try:
                     new_job_id = await chatterbox_service.submit_job(
                         text=order.text,
-                        voice_name=character.name,  # Using character name as voice identifier
+                        reference_audio_url=reference_audio_url,
                         webhook_url=webhook_url,
                     )
                     await order_repo.set_chatterbox_job(order.id, new_job_id)
@@ -401,4 +403,12 @@ def create_app(bot: Bot, dispatcher: Dispatcher) -> web.Application:
     app.router.add_post("/webhook/chatterbox", chatterbox_webhook)
     app.router.add_post("/webhook/sonic", sonic_webhook)
     app.router.add_post(settings.webhook_path, telegram_webhook)
+
+    # Serve voice samples as static files (e.g. /media/voices/trump.wav → media/voices/trump.wav)
+    # This makes the bot's voice samples accessible to RunPod Chatterbox endpoint
+    # via reference_audio_url pointing to http://bot-server:8080/media/voices/<voice_sample_path>
+    voice_samples_dir = str(Path(__file__).resolve().parents[1] / "media" / "voices")
+    app.router.add_static("/media/voices/", voice_samples_dir, show_index=True, follow_symlinks=True)
+    logger.info("Static voice samples mounted at /media/voices/ → %s", voice_samples_dir)
+
     return app

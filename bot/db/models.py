@@ -53,6 +53,7 @@ class Character(Base):
     description: Mapped[str] = mapped_column(String(500), default="", nullable=False)
     preview_image_path: Mapped[str] = mapped_column(String(500), nullable=False)
     elevenlabs_voice_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    voice_sample_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     sort_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)

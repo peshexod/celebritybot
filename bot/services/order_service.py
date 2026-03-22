@@ -25,6 +25,29 @@ class OrderService:
         self.chatterbox_service = ChatterboxService()
         self.video_service = VideoService()
 
+    def _build_voice_sample_url(self, voice_sample_path: str | None) -> str:
+        """
+        Build a full static URL for a voice sample.
+
+        The bot web server serves voice samples at /media/voices/ (via aiohttp static mount).
+        RunPod can reach the bot's static server, so we pass the full URL to Chatterbox.
+
+        Args:
+            voice_sample_path: Relative path from media/voices/, e.g. "trump.wav" or
+                               "john_volt/voice.wav". Can be None (Chatterbox will use
+                               a default voice if no reference audio is provided).
+
+        Returns:
+            Full static URL, e.g. "http://bot-server:8080/media/voices/trump.wav"
+            Returns empty string if voice_sample_path is None/empty.
+        """
+        if not voice_sample_path:
+            return ""
+        # voice_sample_path is relative to media/voices/, e.g. "trump.wav"
+        # Strip leading slashes to avoid double slashes in URL
+        clean_path = voice_sample_path.lstrip("/")
+        return f"{settings.voice_static_base_url.rstrip('/')}/{clean_path}"
+
     async def process_paid_order(
         self,
         session: AsyncSession,
@@ -52,11 +75,14 @@ class OrderService:
         # Build webhook URL
         webhook_url = f"{settings.webhook_host.rstrip('/')}/webhook/chatterbox"
 
-        # Submit Chatterbox TTS job
+        # Build static URL for voice sample (served by the bot's aiohttp static mount)
+        reference_audio_url = self._build_voice_sample_url(character.voice_sample_path)
+
+        # Submit Chatterbox TTS job with the static URL
         try:
             job_id = await self.chatterbox_service.submit_job(
                 text=order.text,
-                voice_name=character.name,  # Using character name as voice identifier
+                reference_audio_url=reference_audio_url,
                 webhook_url=webhook_url,
             )
             await order_repo.set_chatterbox_job(order_id, job_id)
@@ -92,11 +118,12 @@ class OrderService:
             return False
 
         webhook_url = f"{settings.webhook_host.rstrip('/')}/webhook/chatterbox"
+        reference_audio_url = self._build_voice_sample_url(character.voice_sample_path)
 
         try:
             job_id = await self.chatterbox_service.submit_job(
                 text=order.text,
-                voice_name=character.name,
+                reference_audio_url=reference_audio_url,
                 webhook_url=webhook_url,
             )
             await order_repo.set_chatterbox_job(order_id, job_id)
