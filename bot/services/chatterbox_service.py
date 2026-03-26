@@ -31,6 +31,7 @@ class ChatterboxService:
         text: str,
         reference_audio_url: str,
         webhook_url: str,
+        language: str = "ru",
     ) -> str:
         """
         Submit a Chatterbox TTS job to RunPod.
@@ -43,6 +44,7 @@ class ChatterboxService:
             text: Text to synthesize.
             reference_audio_url: Publicly accessible URL of the voice sample WAV file.
             webhook_url: URL to call when the job completes.
+            language: Language code for TTS (default: "ru").
 
         Returns:
             Job ID from RunPod.
@@ -56,6 +58,7 @@ class ChatterboxService:
             "input": {
                 "text": text,
                 "reference_audio_url": reference_audio_url,
+                "language": language,
             },
             "webhook": {
                 "url": webhook_url,
@@ -75,10 +78,11 @@ class ChatterboxService:
 
         job_id = data.get("id", "")
         logger.info(
-            "Submitted Chatterbox job: id=%s text=%s reference_audio_url=%s",
+            "Submitted Chatterbox job: id=%s text=%s reference_audio_url=%s language=%s",
             job_id,
             text[:50],
             reference_audio_url,
+            language,
         )
         return job_id
 
